@@ -14,9 +14,12 @@
     #loginForm { text-align: center; margin-top: 20px; }
     .hidden { display: none; }
     .message-sender { font-weight: bold; color: #2196F3; }
+    #connectionStatus { position: fixed; top: 10px; right: 10px; padding: 5px 10px; }
+    .pending-message { opacity: 0.6; }
   </style>
 </head>
 <body>
+  <div id="connectionStatus">Online</div>
   <div id="loginForm">
     <input type="tel" id="phoneNumber" placeholder="Enter your phone number" pattern="[0-9]+" required/>
     <button onclick="login()">Join Chat</button>
@@ -36,6 +39,32 @@
     const messages = document.getElementById('messages');
     const loginForm = document.getElementById('loginForm');
     const chatContainer = document.getElementById('chatContainer');
+    
+    let isOnline = navigator.onLine;
+    let messageQueue = [];
+    
+    // Check online status
+    window.addEventListener('online', () => {
+      isOnline = true;
+      const status = document.getElementById('connectionStatus');
+      status.textContent = 'Online';
+      status.style.color = '#4CAF50';
+      sendQueuedMessages();
+    });
+    
+    window.addEventListener('offline', () => {
+      isOnline = false;
+      const status = document.getElementById('connectionStatus');
+      status.textContent = 'Offline - Messages will be queued';
+      status.style.color = '#f44336';
+    });
+
+    function sendQueuedMessages() {
+      while (messageQueue.length > 0) {
+        const msg = messageQueue.shift();
+        socket.emit('chat message', msg);
+      }
+    }
 
     function login() {
       const phoneNumber = document.getElementById('phoneNumber').value;
@@ -51,7 +80,17 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       if (input.value) {
-        socket.emit('chat message', input.value);
+        const message = input.value;
+        if (isOnline) {
+          socket.emit('chat message', message);
+        } else {
+          messageQueue.push(message);
+          const li = document.createElement('li');
+          li.innerHTML = `<span class="message-sender">Me:</span> ${message} (pending)`;
+          li.classList.add('pending-message');
+          messages.appendChild(li);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
         input.value = '';
       }
     });
