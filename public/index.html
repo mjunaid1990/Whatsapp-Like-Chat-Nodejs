@@ -11,20 +11,42 @@
     #form { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px; background: white; }
     #input { border: 1px solid #ddd; padding: 10px; width: 80%; margin-right: 0.5%; }
     #form button { width: 18%; background: #4CAF50; color: white; padding: 10px; border: none; }
+    #loginForm { text-align: center; margin-top: 20px; }
+    .hidden { display: none; }
+    .message-sender { font-weight: bold; color: #2196F3; }
   </style>
 </head>
 <body>
-  <ul id="messages"></ul>
-  <form id="form">
-    <input id="input" autocomplete="off" placeholder="Type a message..."/>
-    <button>Send</button>
-  </form>
+  <div id="loginForm">
+    <input type="tel" id="phoneNumber" placeholder="Enter your phone number" pattern="[0-9]+" required/>
+    <button onclick="login()">Join Chat</button>
+  </div>
+  <div id="chatContainer" class="hidden">
+    <ul id="messages"></ul>
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="Type a message..."/>
+      <button>Send</button>
+    </form>
+  </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     const form = document.getElementById('form');
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
+    const loginForm = document.getElementById('loginForm');
+    const chatContainer = document.getElementById('chatContainer');
+
+    function login() {
+      const phoneNumber = document.getElementById('phoneNumber').value;
+      if (phoneNumber && phoneNumber.match(/^[0-9]+$/)) {
+        socket.emit('login', phoneNumber);
+        loginForm.classList.add('hidden');
+        chatContainer.classList.remove('hidden');
+      } else {
+        alert('Please enter a valid phone number');
+      }
+    }
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -34,11 +56,23 @@
       }
     });
 
-    socket.on('chat message', (msg) => {
+    socket.on('chat message', (data) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="message-sender">${data.phoneNumber}:</span> ${data.message}`;
+      messages.appendChild(li);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('user joined', (msg) => {
       const li = document.createElement('li');
       li.textContent = msg;
       messages.appendChild(li);
-      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('user left', (msg) => {
+      const li = document.createElement('li');
+      li.textContent = msg;
+      messages.appendChild(li);
     });
   </script>
 </body>
